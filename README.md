@@ -182,7 +182,8 @@ export PATH="/c/Program Files/nodejs:$PATH"
 ## Dokumentasi
 
 - [docs/TESTING.md](docs/TESTING.md) — checklist E2E manual per-peran, skenario integrasi, regression
-- [docs/DEPLOY.md](docs/DEPLOY.md) — deploy VPS produksi (Docker Compose + Nginx + Let's Encrypt)
+- [docs/DEPLOY.md](docs/DEPLOY.md) — deploy VPS produksi (Docker Compose + Nginx container + Let's Encrypt via certbot)
+- [docs/DEPLOY-aapanel.md](docs/DEPLOY-aapanel.md) — deploy via VPS yang sudah pakai **aaPanel** (Nginx + SSL handled by aaPanel UI)
 
 ## Roadmap
 
