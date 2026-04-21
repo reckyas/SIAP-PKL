@@ -50,8 +50,9 @@ services:
       DB_PORT: "5432"
       RUN_SEED_ON_START: "true"
     # Bind ke loopback saja — aaPanel nginx yang reach port ini.
+    # APP_PORT di .env.prod menentukan port host (default 3100).
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${APP_PORT:-3100}:3000"
     networks:
       - internal
 
