@@ -15,11 +15,12 @@
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "tsx prisma/seed-master.ts",
+    "db:seed:demo": "tsx prisma/seed-demo.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed-master.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

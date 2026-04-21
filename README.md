@@ -89,10 +89,9 @@ Service yang dijalankan:
 
 ```bash
 npm run db:migrate
-npm run db:seed
+npm run db:seed        # master data (aman di produksi: admin, jurusan, kelas, keahlian, dokumen, bidang, bobot SAW)
+npm run db:seed:demo   # opsional — dummy guru/siswa/DUDI/lowongan untuk development
 ```
-
-Seed membuat akun admin, jurusan/kelas/keahlian/dokumen/bidang master, dan bobot SAW default.
 
 ### 5. Jalankan dev server
 
@@ -156,7 +155,8 @@ Siap PKL/
 | `npm run db:migrate` | `prisma migrate dev`                               |
 | `npm run db:reset`   | ⚠️ Reset DB (hapus data, re-run migration + seed) |
 | `npm run db:studio`  | Buka Prisma Studio                                 |
-| `npm run db:seed`    | Jalankan `prisma/seed.ts`                          |
+| `npm run db:seed`    | Seed master data (production-safe)                 |
+| `npm run db:seed:demo` | Seed data demo (guru/siswa/DUDI/lowongan — dev only) |
 
 ## Catatan Teknis
 
@@ -179,6 +179,11 @@ Siap PKL/
 export PATH="/c/Program Files/nodejs:$PATH"
 ```
 
+## Dokumentasi
+
+- [docs/TESTING.md](docs/TESTING.md) — checklist E2E manual per-peran, skenario integrasi, regression
+- [docs/DEPLOY.md](docs/DEPLOY.md) — deploy VPS produksi (Docker Compose + Nginx + Let's Encrypt)
+
 ## Roadmap
 
 - [x] **M1 — Fondasi**: Auth, layout, DB, seed minimal
@@ -189,7 +194,7 @@ export PATH="/c/Program Files/nodejs:$PATH"
 - [x] **M6 — Alur Pendaftaran**: Pendaftaran → approval guru → review DU/DI, timeline
 - [x] **M7 — Logbook, Penilaian, Review**
 - [x] **M8 — Import siswa massal** (Excel + template + validasi all-or-nothing)
-- [ ] **M9 — Finalisasi**: Seed lengkap, E2E manual, dokumentasi deploy
+- [x] **M9 — Finalisasi**: Seed master + demo, checklist E2E, Dockerfile + compose prod + Nginx, docs deploy VPS
 
 ## Lisensi
 

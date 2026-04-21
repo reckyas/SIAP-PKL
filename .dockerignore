@@ -1,0 +1,25 @@
+node_modules
+.next
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Dockerfile
+docker-compose*.yml
+README.md
+docs
+*.md
+coverage
+.turbo
+.cache
+.eslintcache
+
+# Keep these (override) — Prisma schema & migrations needed for build
+!prisma
