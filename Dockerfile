@@ -30,7 +30,11 @@ RUN apk add --no-cache libc6-compat openssl
 
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
-RUN npm ci --omit=dev --ignore-scripts
+# --ignore-scripts skip postinstall (prisma generate butuh prisma CLI dari devDeps).
+# Tapi esbuild butuh binary platform-nya di-download — `npm rebuild esbuild`
+# menjalankan install script-nya saja (tidak butuh prisma CLI).
+RUN npm ci --omit=dev --ignore-scripts \
+ && npm rebuild esbuild
 RUN npx prisma generate
 
 
