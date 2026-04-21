@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Upload } from "lucide-react";
 
 import { prisma } from "@/lib/db";
 import {
@@ -85,12 +85,20 @@ export default async function GuruListPage({ searchParams }: PageProps) {
             oleh admin — tidak ada pendaftaran mandiri.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/guru/baru">
-            <Plus className="h-4 w-4" />
-            Tambah Guru
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href="/admin/guru/import">
+              <Upload className="h-4 w-4" />
+              Import
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/admin/guru/baru">
+              <Plus className="h-4 w-4" />
+              Tambah Guru
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Card>
