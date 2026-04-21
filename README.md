@@ -1,30 +1,54 @@
 # SIAP PKL — SMKN 1 Badegan
 
-Sistem Informasi & Rekomendasi Praktik Kerja Lapangan berbasis metode **SAW (Simple Additive Weighting)**. Menghubungkan empat peran: **Admin**, **Guru Pembimbing**, **Siswa**, dan **DU/DI**.
-
-> Status: **Milestone 1 — Fondasi**. Auth & layout siap. Fitur bisnis (lowongan, SAW, pendaftaran) dibuat di milestone berikutnya.
+Platform manajemen PKL SMKN 1 Badegan untuk admin, guru, siswa, dan DU/DI. Rekomendasi lowongan otomatis via metode **Simple Additive Weighting (SAW)**.
 
 ## Stack
 
-| Komponen         | Teknologi                                                |
-| ---------------- | -------------------------------------------------------- |
+| Komponen         | Teknologi                                                  |
+| ---------------- | ---------------------------------------------------------- |
 | Framework        | Next.js 16 (App Router, Server Components, Server Actions) |
-| Bahasa           | TypeScript strict                                        |
-| Database         | PostgreSQL 16 (via Docker Compose)                       |
-| ORM              | Prisma 6                                                 |
-| Auth             | Auth.js v5 (Credentials + JWT sessions)                  |
-| UI               | Tailwind CSS + shadcn/ui (new-york, zinc)                |
-| Form             | React Hook Form + Zod                                    |
-| Ikon             | lucide-react                                             |
-| Notifikasi toast | sonner                                                   |
+| Bahasa           | TypeScript strict                                          |
+| Database         | PostgreSQL 16 (via Docker Compose)                         |
+| ORM              | Prisma 6                                                   |
+| Auth             | Auth.js v5 (Credentials + JWT)                             |
+| UI               | Tailwind CSS + shadcn/ui (new-york, zinc)                  |
+| Form             | React Hook Form + Zod                                      |
+| Peta             | Leaflet + React Leaflet                                    |
+| Import Excel     | ExcelJS                                                    |
+| Ikon & toast     | lucide-react, sonner                                       |
+
+## Fitur
+
+**Empat peran** — Admin, Guru Pembimbing, Siswa, DU/DI — masing-masing dengan dashboard, navigasi, dan route protection berbasis middleware.
+
+**Admin**
+- Master data: jurusan, kelas (cascading di bawah jurusan), keahlian, dokumen, bidang PKL
+- Kelola user: siswa, guru, DU/DI (verifikasi + reset password)
+- **Import siswa massal** via Excel dengan template downloadable + validasi all-or-nothing
+- Konfigurasi bobot SAW (global & per-jurusan)
+- Monitoring pendaftaran, logbook, penilaian lintas-peran
+- Audit log
+
+**Siswa**
+- Profil lengkap: data diri, koordinat (Leaflet), bidang minat, keahlian, dokumen
+- Cari lowongan + **Rekomendasi SAW** dengan breakdown skor per kriteria
+- Pendaftaran PKL, logbook harian, lihat nilai, review DU/DI
+
+**Guru Pembimbing**
+- Approval pendaftaran siswa bimbingan
+- Verifikasi logbook & input penilaian akhir
+
+**DU/DI**
+- Kelola lowongan & kuota (pisah laki-laki/perempuan)
+- Review pendaftar → terima/tolak, verifikasi logbook, nilai siswa, review mereka
 
 ## Prasyarat
 
-- **Node.js 20+** (project diuji pada Node 22)
+- **Node.js 20+** (diuji pada Node 22)
 - **Docker Desktop** (atau Docker Engine + Compose plugin)
-- **npm** 10+ (sudah bawaan Node)
+- **npm** 10+
 
-## Setup Lokal
+## Setup
 
 ### 1. Clone & install
 
@@ -42,16 +66,16 @@ npm install
 cp .env.example .env
 ```
 
-Lalu edit `.env`:
+Edit `.env`:
 
-- `AUTH_SECRET` — generate string acak 32+ karakter. Contoh:
+- `AUTH_SECRET` — string acak 32+ karakter:
   ```bash
   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
   ```
-- `DATABASE_URL` — sudah default ke credentials di `docker-compose.yml`. Biarkan kalau pakai Docker.
-- `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` — kredensial admin pertama (ganti password default).
+- `DATABASE_URL` — sudah default ke credentials `docker-compose.yml`.
+- `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` — kredensial admin pertama.
 
-### 3. Jalankan database (Docker)
+### 3. Jalankan database
 
 ```bash
 docker compose up -d
@@ -61,33 +85,16 @@ Service yang dijalankan:
 - **`db`** — Postgres 16 di `localhost:5432`
 - **`pgadmin`** — GUI di `http://localhost:5050` (login: `admin@siap-pkl.local` / `admin`)
 
-Cek health:
-
-```bash
-docker compose ps
-```
-
-### 4. Migrasi schema
+### 4. Migrasi & seed
 
 ```bash
 npm run db:migrate
-```
-
-Perintah ini menjalankan `prisma migrate dev` — membuat migration pertama dari `prisma/schema.prisma` dan apply ke DB.
-
-### 5. Seed data awal
-
-```bash
 npm run db:seed
 ```
 
-Seed akan membuat:
-- Akun **Admin** sesuai `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`
-- Jurusan placeholder `TBD` (wajib — dipakai saat siswa baru register)
-- Beberapa jurusan SMK (TKJ, RPL, MM, AKL, OTKP)
-- Konfigurasi sistem default (koordinat sekolah, kuota pendaftaran, dll)
+Seed membuat akun admin, jurusan/kelas/keahlian/dokumen/bidang master, dan bobot SAW default.
 
-### 6. Jalankan dev server
+### 5. Jalankan dev server
 
 ```bash
 npm run dev
@@ -99,123 +106,90 @@ Buka [http://localhost:3000](http://localhost:3000).
 
 Setelah seed:
 
-- **Admin**: sesuai `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (default `admin@siap-pkl.local` / `admin123`). Akun ini sudah `VERIFIED` dan langsung bisa login.
+- **Admin**: sesuai `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (default `admin@siap-pkl.local` / `admin123`).
 
-Untuk **Siswa** & **DU/DI**: daftar via halaman `/register`. Akun baru berstatus `PENDING` sampai admin memverifikasi (fitur verifikasi dibuat di milestone 2).
+**Siswa** dibuat oleh admin (single create atau import Excel). **DU/DI** mendaftar sendiri di `/register` → menunggu verifikasi admin.
 
 ## Struktur Project
 
 ```
 Siap PKL/
-├── docker-compose.yml          # Postgres + pgAdmin
+├── docker-compose.yml
 ├── prisma/
-│   ├── schema.prisma           # Semua model Prisma
-│   └── seed.ts                 # Seed admin + jurusan + config
+│   ├── schema.prisma        # Model Prisma (User, Siswa, DUDI, Lowongan, Pendaftaran, SAWWeight, dll)
+│   ├── migrations/
+│   └── seed.ts
 ├── src/
 │   ├── app/
-│   │   ├── (auth)/             # Route group login/register
-│   │   │   ├── actions.ts      #  sign-out action
-│   │   │   ├── layout.tsx
-│   │   │   ├── login/
-│   │   │   │   ├── actions.ts  #  login server action
-│   │   │   │   ├── login-form.tsx
-│   │   │   │   └── page.tsx
-│   │   │   └── register/
-│   │   │       ├── register-form.tsx
-│   │   │       └── page.tsx
-│   │   ├── admin/page.tsx      # Dashboard stub per role
-│   │   ├── dudi/page.tsx
-│   │   ├── guru/page.tsx
-│   │   ├── siswa/page.tsx
-│   │   ├── api/
-│   │   │   ├── auth/[...nextauth]/route.ts
-│   │   │   └── register/route.ts
-│   │   ├── globals.css
-│   │   ├── layout.tsx          # Root layout + ThemeProvider
-│   │   └── page.tsx            # Landing page
-│   ├── auth.config.ts          # Config edge-safe (untuk middleware)
-│   ├── auth.ts                 # Auth.js v5 instance (node)
-│   ├── middleware.ts           # Role-based route protection
-│   ├── components/
-│   │   ├── ui/                 # shadcn/ui primitives
-│   │   ├── dashboard-shell.tsx
-│   │   ├── theme-provider.tsx
-│   │   ├── theme-toggle.tsx
-│   │   └── sign-out-button.tsx
+│   │   ├── (auth)/          # /login, /register
+│   │   ├── admin/           # Master data, kelola user, SAW weight, import siswa
+│   │   ├── guru/            # Approval, logbook, penilaian
+│   │   ├── siswa/           # Profil, lowongan, rekomendasi, pendaftaran, logbook, review
+│   │   ├── dudi/            # Lowongan, pendaftar, logbook, penilaian, review
+│   │   └── api/
+│   ├── auth.config.ts       # Edge-safe config (middleware)
+│   ├── auth.ts              # Auth.js v5 (node runtime + Credentials)
+│   ├── middleware.ts        # Role-based route protection
+│   ├── components/ui/       # shadcn/ui primitives
 │   ├── lib/
-│   │   ├── constants.ts        # ROLE_LABEL, DASHBOARD_BY_ROLE
-│   │   ├── db.ts               # Prisma singleton
-│   │   ├── session.ts          # requireRole, requireSession helper
-│   │   ├── utils.ts            # cn() helper
-│   │   └── validations/
-│   │       └── auth.ts         # Zod schema login/register
+│   │   ├── db.ts            # Prisma singleton
+│   │   ├── saw.ts           # Engine SAW (normalisasi + skor)
+│   │   ├── audit.ts         # logAudit()
+│   │   ├── nav.ts           # Konfigurasi sidebar per-role
+│   │   ├── session.ts       # requireRole helper
+│   │   └── validations/     # Zod schemas per-fitur
 │   └── types/
-│       └── next-auth.d.ts      # Augmentasi session.user.role, dll
-├── tailwind.config.ts
-├── tsconfig.json
-├── next.config.ts
-└── components.json             # Config shadcn
+└── components.json
 ```
 
 ## Skrip npm
 
-| Skrip              | Fungsi                                                       |
-| ------------------ | ------------------------------------------------------------ |
-| `npm run dev`      | Dev server di port 3000                                      |
-| `npm run build`    | Prisma generate + Next build                                 |
-| `npm start`        | Jalankan build production                                    |
-| `npm run lint`     | ESLint (next/core-web-vitals)                                |
-| `npm run typecheck`| `tsc --noEmit`                                               |
-| `npm run db:up`    | Start Postgres (tanpa pgAdmin)                               |
-| `npm run db:down`  | Stop semua service Docker                                    |
-| `npm run db:migrate` | `prisma migrate dev`                                       |
-| `npm run db:reset` | ⚠️ Reset DB (hapus semua data, re-run migration + seed)     |
-| `npm run db:studio`| Buka Prisma Studio                                           |
-| `npm run db:seed`  | Jalankan `prisma/seed.ts`                                    |
+| Skrip                | Fungsi                                             |
+| -------------------- | -------------------------------------------------- |
+| `npm run dev`        | Dev server di port 3000                            |
+| `npm run build`      | Prisma generate + Next build                       |
+| `npm start`          | Jalankan build production                          |
+| `npm run lint`       | ESLint                                             |
+| `npm run typecheck`  | `tsc --noEmit`                                     |
+| `npm run db:up`      | Start Postgres                                     |
+| `npm run db:down`    | Stop service Docker                                |
+| `npm run db:migrate` | `prisma migrate dev`                               |
+| `npm run db:reset`   | ⚠️ Reset DB (hapus data, re-run migration + seed) |
+| `npm run db:studio`  | Buka Prisma Studio                                 |
+| `npm run db:seed`    | Jalankan `prisma/seed.ts`                          |
 
-## Alur Auth (Milestone 1)
+## Catatan Teknis
 
-1. User daftar di `/register` → pilih peran (**Siswa** atau **DU/DI**) → isi email, nama, password.
-2. API `/api/register` membuat `User` (status `PENDING`) + profile skeleton (`Siswa` atau `DUDI`) dalam transaksi.
-3. Admin memverifikasi (milestone 2) → `User.status = VERIFIED`.
-4. User login di `/login` → Auth.js `Credentials` provider cek bcrypt + status → JWT session berisi `{ id, role, status, name }`.
-5. Middleware mengecek role pada setiap request dan redirect ke dashboard yang sesuai (`/admin`, `/guru`, `/siswa`, `/dudi`).
-
-## Catatan Teknis & Trade-off
-
-- **Strategy JWT (bukan database session).** Wajib untuk Credentials provider di Auth.js v5, dan menghilangkan kebutuhan PrismaAdapter di auth flow.
-- **`auth.config.ts` vs `auth.ts` dipisah.** Middleware jalan di Edge Runtime yang tidak support `bcryptjs`/`@prisma/client`. Config edge-safe diletakkan di `auth.config.ts`, lalu `auth.ts` (node) extend untuk menambahkan Credentials provider.
-- **Pesan login jelas untuk status `PENDING`/`SUSPENDED`.** Trade-off vs user-enumeration: ini sistem internal sekolah, kejelasan UX lebih penting daripada mencegah enumerasi.
-- **Jurusan placeholder `TBD` saat register siswa.** Field `jurusanId` wajib di `Siswa`, tapi pada saat register publik kita belum tahu jurusannya → di-pointer ke `TBD`. Siswa wajib melengkapi di milestone 2.
-- **Koordinat dummy DU/DI saat register.** `DUDI.latitude/longitude` adalah `Float` (bukan optional). DU/DI wajib update koordinat real di profil milestone 2.
-- **`SAWWeight @@unique([jurusanId, isActive])` tidak efektif di Postgres untuk row dengan `jurusanId IS NULL`** (NULL dianggap distinct). Penegakan "hanya satu aktif" harus dilakukan di service layer via transaksi. Akan di-address di milestone 4.
+- **JWT session (bukan database).** Wajib untuk Credentials provider Auth.js v5; menghilangkan kebutuhan PrismaAdapter di auth flow.
+- **`auth.config.ts` vs `auth.ts` dipisah.** Middleware jalan di Edge Runtime yang tidak support `bcryptjs`/`@prisma/client`; config edge-safe di `auth.config.ts`, `auth.ts` (node) extend untuk Credentials.
+- **SAW bobot per-jurusan.** `SAWWeight` bisa global (`jurusanId = null`) atau spesifik; saat scoring, bobot jurusan meng-override global.
+- **Soft delete** dipakai untuk User/Siswa/Guru/DUDI (kolom `deletedAt`) supaya rekam PKL/audit trail tetap utuh.
 
 ## Troubleshooting
 
 **`Can't reach database server at localhost:5432`**
-→ Jalankan `docker compose up -d` dan tunggu healthcheck hijau (`docker compose ps`).
-
-**`Seed jurusan belum dijalankan`** saat register siswa
-→ Jalankan `npm run db:seed`.
+→ `docker compose up -d` dan cek `docker compose ps` sampai healthcheck hijau.
 
 **`[auth][error] CredentialsSignin`** saat login
-→ Cek: (a) akun sudah di-seed/diverifikasi, (b) password benar, (c) `AUTH_SECRET` terisi di `.env`.
+→ Pastikan akun sudah di-seed & verified, password benar, `AUTH_SECRET` terisi.
 
 **Windows Git Bash: `node: command not found`**
-→ Node ada di `C:\Program Files\nodejs\` tapi belum di PATH bash. Tambahkan ke `~/.bashrc`:
+→ Tambahkan ke `~/.bashrc`:
 ```bash
 export PATH="/c/Program Files/nodejs:$PATH"
 ```
 
 ## Roadmap
 
-- [x] **M1 — Fondasi**: Auth, layout, DB setup, seed minimal.
-- [ ] **M2 — Manajemen User**: CRUD profil siswa/DU/DI/guru, verifikasi admin, dashboard per role.
-- [ ] **M3 — Lowongan & Pencarian**: CRUD lowongan DU/DI, search/filter/peta Leaflet.
-- [ ] **M4 — Mesin SAW**: Algoritma `/lib/saw`, halaman rekomendasi dengan breakdown, bobot per-jurusan.
-- [ ] **M5 — Alur Pendaftaran**: Pendaftaran → approval guru → review DU/DI, timeline, notifikasi.
-- [ ] **M6 — Fitur Tambahan**: Logbook, penilaian, review, pengumuman, audit log, export.
-- [ ] **M7 — Seed & Testing**: Seed lengkap, E2E manual, dokumentasi.
+- [x] **M1 — Fondasi**: Auth, layout, DB, seed minimal
+- [x] **M2 — Manajemen User**: CRUD siswa/guru/DU/DI, verifikasi admin, dashboard per-role
+- [x] **M3 — Master Data**: Jurusan, kelas, keahlian, dokumen, bidang PKL
+- [x] **M4 — Lowongan & Pencarian**: CRUD lowongan DU/DI, search/filter/peta Leaflet
+- [x] **M5 — Mesin SAW**: Engine skor, halaman rekomendasi, bobot per-jurusan
+- [x] **M6 — Alur Pendaftaran**: Pendaftaran → approval guru → review DU/DI, timeline
+- [x] **M7 — Logbook, Penilaian, Review**
+- [x] **M8 — Import siswa massal** (Excel + template + validasi all-or-nothing)
+- [ ] **M9 — Finalisasi**: Seed lengkap, E2E manual, dokumentasi deploy
 
 ## Lisensi
 
