@@ -222,12 +222,17 @@ docker stats
 
 ### 6.3 Update aplikasi (new version)
 
+Alur singkat (perubahan kode tanpa migration):
+
 ```bash
 cd /opt/siap-pkl
-git pull
+git pull --ff-only origin main
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app
 # Migrate deploy jalan otomatis di entrypoint
 ```
+
+➡️ **Untuk alur lengkap** (update dengan migration Prisma, rollback,
+backup pre-migrate, troubleshooting build OOM) lihat [UPDATE.md](UPDATE.md).
 
 ### 6.4 Seed demo data (opsional, HANYA di staging)
 

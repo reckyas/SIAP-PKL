@@ -184,13 +184,18 @@ aaPanel auto-renew Let's Encrypt tiap 60 hari via cron internal — tidak perlu 
 
 ### Update aplikasi
 
+Alur singkat (perubahan kode tanpa migration):
+
 ```bash
 cd /opt/siap-pkl
-git pull
+git pull --ff-only origin main
 docker compose -f docker-compose.prod.aapanel.yml --env-file .env.prod up -d --build app
 ```
 
-aaPanel Nginx tidak perlu disentuh — target `127.0.0.1:3000` tetap sama.
+aaPanel Nginx tidak perlu disentuh — target `127.0.0.1:<APP_PORT>` tetap sama.
+
+➡️ **Untuk alur lengkap** (update dengan migration Prisma, rollback, backup
+pre-migrate, troubleshooting build) lihat [UPDATE.md](UPDATE.md).
 
 ### Cek log app
 
