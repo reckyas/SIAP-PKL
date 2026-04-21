@@ -1,0 +1,719 @@
+// ============================================
+// SIAP PKL - Database Schema
+// ============================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Role {
+  ADMIN
+  GURU_PEMBIMBING
+  SISWA
+  DUDI
+}
+
+enum AccountStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum Gender {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum StatusPKL {
+  BELUM_DAFTAR
+  MENUNGGU_KONFIRMASI
+  DITERIMA
+  SEDANG_PKL
+  SELESAI
+  DIBATALKAN
+}
+
+enum StatusLowongan {
+  DRAFT
+  OPEN
+  CLOSED
+  FULL
+}
+
+enum StatusPendaftaran {
+  PENDING
+  DISETUJUI_GURU
+  DITOLAK_GURU
+  DILIHAT_DUDI
+  DITERIMA
+  DITOLAK_DUDI
+  DIBATALKAN_SISWA
+}
+
+enum NotificationType {
+  PENDAFTARAN_BARU
+  STATUS_PENDAFTARAN
+  APPROVAL_DIBUTUHKAN
+  PENGUMUMAN
+  LOWONGAN_BARU
+  LOGBOOK_REVIEW
+  PENILAIAN_MASUK
+  SISTEM
+}
+
+enum LogbookStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  REVISED
+}
+
+enum Tingkat {
+  X
+  XI
+  XII
+  XIII
+}
+
+// ============================================
+// BASE USER (Autentikasi)
+// ============================================
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  password      String
+  role          Role
+  status        AccountStatus @default(PENDING)
+  emailVerified DateTime?
+  lastLoginAt   DateTime?
+
+  // Flag wajib ganti password saat login pertama.
+  // Diset true ketika akun dibuat admin (guru/siswa).
+  // Setelah user ganti password, otomatis false.
+  mustChangePassword Boolean @default(false)
+
+  siswa Siswa?
+  guru  Guru?
+  dudi  DUDI?
+  admin Admin?
+
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+  sentMessages     Message[]      @relation("MessageSender")
+  receivedMessages Message[]      @relation("MessageReceiver")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([email])
+  @@index([role, status])
+}
+
+// ============================================
+// ADMIN
+// ============================================
+
+model Admin {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  nama    String
+  jabatan String?
+  nip     String? @unique
+  noHp    String?
+  fotoUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// GURU PEMBIMBING
+// ============================================
+
+model Guru {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  nama          String
+  nip           String? @unique
+  noHp          String
+  fotoUrl       String?
+  mataPelajaran String?
+
+  siswaBimbingan Siswa[]
+  approvals      Pendaftaran[] @relation("GuruApproval")
+  penilaian      Penilaian[]   @relation("PenilaianGuru")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// SISWA
+// ============================================
+
+model Siswa {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Data diri
+  nis          String   @unique
+  nama         String
+  jenisKelamin Gender
+  tanggalLahir DateTime
+  alamat       String
+  latitude     Float?
+  longitude    Float?
+  noHp         String
+  fotoUrl      String?
+
+  // Data akademik
+  kelasId       String?
+  kelas         Kelas?  @relation(fields: [kelasId], references: [id], onDelete: SetNull)
+  jurusanId     String
+  jurusan       Jurusan @relation(fields: [jurusanId], references: [id])
+
+  // Guru pembimbing
+  guruId String?
+  guru   Guru?   @relation(fields: [guruId], references: [id])
+
+  keahlian SiswaKeahlian[]
+  dokumen  SiswaDokumen[]
+
+  // Preferensi
+  jarakMaksimal Float?
+  bersediaKos   Boolean @default(false)
+  bidangMinat   SiswaBidangMinat[]
+
+  statusPKL StatusPKL @default(BELUM_DAFTAR)
+
+  pendaftaran       Pendaftaran[]
+  logbook           Logbook[]
+  penilaianDiterima Penilaian[]   @relation("PenilaianSiswa")
+  reviewDiberikan   ReviewDUDI[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([nis])
+  @@index([jurusanId])
+  @@index([statusPKL])
+}
+
+// ============================================
+// DU/DI (Dunia Usaha/Dunia Industri)
+// ============================================
+
+model DUDI {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  namaPerusahaan String
+  deskripsi      String? @db.Text
+  logoUrl        String?
+  websiteUrl     String?
+
+  alamat    String
+  latitude  Float
+  longitude Float
+
+  namaPIC    String
+  jabatanPIC String?
+  noHpPIC    String
+  emailPIC   String?
+
+  bidangUsaha String[]
+  fotoUrls    String[]
+
+  lowongan           Lowongan[]
+  reviews            ReviewDUDI[]
+  penilaianDiberikan Penilaian[]  @relation("PenilaianDUDI")
+
+  ratingRataRata Float?
+  jumlahReview   Int    @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([namaPerusahaan])
+}
+
+// ============================================
+// JURUSAN
+// ============================================
+
+model Jurusan {
+  id        String  @id @default(cuid())
+  kode      String  @unique
+  nama      String
+  deskripsi String?
+
+  siswa      Siswa[]
+  sawWeights SAWWeight[]
+  lowongan   LowonganJurusan[]
+  kelas      Kelas[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// KELAS (Master per Jurusan)
+// ============================================
+//
+// Kelas dikelompokkan per jurusan dan punya tingkat (X/XI/XII/XIII).
+// Tingkat dipakai untuk aturan PKL yang mungkin berbeda per angkatan.
+// Unique: satu jurusan tidak boleh punya kelas dengan nama + tingkat yang
+// sama. `nama` biasanya label pendek seperti "TKJ 1" atau "A".
+model Kelas {
+  id        String  @id @default(cuid())
+  nama      String
+  tingkat   Tingkat
+  jurusanId String
+  jurusan   Jurusan @relation(fields: [jurusanId], references: [id], onDelete: Cascade)
+
+  siswa Siswa[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jurusanId, tingkat, nama])
+  @@index([jurusanId])
+}
+
+// ============================================
+// BIDANG (Master Data)
+// ============================================
+//
+// Master bidang minat siswa dan bidang lowongan. Auto-grow: user bisa
+// menambahkan nama bidang baru dari form, sistem upsert by slug (case-
+// insensitive) supaya tidak ada duplikasi "Web Dev" vs "web dev".
+model Bidang {
+  id   String @id @default(cuid())
+  nama String @unique
+  slug String @unique
+
+  siswaMinat SiswaBidangMinat[]
+  lowongan   LowonganBidang[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SiswaBidangMinat {
+  siswaId  String
+  siswa    Siswa  @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  bidangId String
+  bidang   Bidang @relation(fields: [bidangId], references: [id], onDelete: Cascade)
+
+  @@id([siswaId, bidangId])
+  @@index([bidangId])
+}
+
+model LowonganBidang {
+  lowonganId String
+  lowongan   Lowongan @relation(fields: [lowonganId], references: [id], onDelete: Cascade)
+  bidangId   String
+  bidang     Bidang   @relation(fields: [bidangId], references: [id], onDelete: Cascade)
+
+  @@id([lowonganId, bidangId])
+  @@index([bidangId])
+}
+
+// ============================================
+// KEAHLIAN & DOKUMEN (Master Data)
+// ============================================
+
+model Keahlian {
+  id       String  @id @default(cuid())
+  nama     String  @unique
+  kategori String?
+
+  siswa    SiswaKeahlian[]
+  lowongan LowonganKeahlian[]
+
+  createdAt DateTime @default(now())
+}
+
+model SiswaKeahlian {
+  siswaId    String
+  siswa      Siswa    @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  keahlianId String
+  keahlian   Keahlian @relation(fields: [keahlianId], references: [id], onDelete: Cascade)
+  level      Int      @default(3)
+
+  @@id([siswaId, keahlianId])
+}
+
+model Dokumen {
+  id        String  @id @default(cuid())
+  nama      String  @unique
+  deskripsi String?
+
+  siswa    SiswaDokumen[]
+  lowongan LowonganDokumen[]
+}
+
+model SiswaDokumen {
+  siswaId   String
+  siswa     Siswa   @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  dokumenId String
+  dokumen   Dokumen @relation(fields: [dokumenId], references: [id], onDelete: Cascade)
+  nomorDok  String?
+  fileUrl   String?
+  verified  Boolean @default(false)
+
+  @@id([siswaId, dokumenId])
+}
+
+// ============================================
+// LOWONGAN PKL
+// ============================================
+
+model Lowongan {
+  id        String @id @default(cuid())
+  dudiId    String
+  dudi      DUDI   @relation(fields: [dudiId], references: [id], onDelete: Cascade)
+
+  judul     String
+  deskripsi String           @db.Text
+  bidang    LowonganBidang[]
+
+  kuotaTotal      Int
+  kuotaLaki       Int
+  kuotaPerempuan  Int
+  terisiLaki      Int @default(0)
+  terisiPerempuan Int @default(0)
+
+  tanggalMulai   DateTime
+  tanggalSelesai DateTime
+
+  keahlianDibutuhkan LowonganKeahlian[]
+  dokumenDibutuhkan  LowonganDokumen[]
+  jurusanTarget      LowonganJurusan[]
+  nilaiMinimum       Float?
+
+  uangSaku      Int?
+  makanSiang    Boolean @default(false)
+  transport     Boolean @default(false)
+  fasilitasLain String? @db.Text
+
+  jamKerja      String?
+  hariKerja     String?
+  dressCode     String?
+  catatanKhusus String? @db.Text
+
+  status StatusLowongan @default(DRAFT)
+
+  pendaftaran Pendaftaran[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dudiId])
+  @@index([status])
+  @@index([tanggalMulai])
+}
+
+model LowonganKeahlian {
+  lowonganId   String
+  lowongan     Lowongan @relation(fields: [lowonganId], references: [id], onDelete: Cascade)
+  keahlianId   String
+  keahlian     Keahlian @relation(fields: [keahlianId], references: [id], onDelete: Cascade)
+  levelMinimum Int      @default(1)
+
+  @@id([lowonganId, keahlianId])
+}
+
+model LowonganDokumen {
+  lowonganId String
+  lowongan   Lowongan @relation(fields: [lowonganId], references: [id], onDelete: Cascade)
+  dokumenId  String
+  dokumen    Dokumen  @relation(fields: [dokumenId], references: [id], onDelete: Cascade)
+  wajib      Boolean  @default(true)
+
+  @@id([lowonganId, dokumenId])
+}
+
+// Jurusan yang relevan untuk lowongan ini. Dipakai sebagai hard filter
+// di SAW: lowongan yang jurusanTarget-nya tidak memuat jurusan siswa
+// tidak akan ikut direkomendasikan.
+model LowonganJurusan {
+  lowonganId String
+  lowongan   Lowongan @relation(fields: [lowonganId], references: [id], onDelete: Cascade)
+  jurusanId  String
+  jurusan    Jurusan  @relation(fields: [jurusanId], references: [id], onDelete: Cascade)
+
+  @@id([lowonganId, jurusanId])
+  @@index([jurusanId])
+}
+
+// ============================================
+// PENDAFTARAN
+// ============================================
+
+model Pendaftaran {
+  id         String   @id @default(cuid())
+  siswaId    String
+  siswa      Siswa    @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  lowonganId String
+  lowongan   Lowongan @relation(fields: [lowonganId], references: [id], onDelete: Cascade)
+
+  status   StatusPendaftaran @default(PENDING)
+  skorSAW  Float?
+  motivasi String?           @db.Text
+
+  guruApprovalId String?
+  guruApproval   Guru?     @relation("GuruApproval", fields: [guruApprovalId], references: [id])
+  guruApprovedAt DateTime?
+  catatanGuru    String?
+
+  dudiReviewedAt DateTime?
+  catatanDUDI    String?
+
+  timeline PendaftaranTimeline[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siswaId, lowonganId])
+  @@index([status])
+}
+
+model PendaftaranTimeline {
+  id            String      @id @default(cuid())
+  pendaftaranId String
+  pendaftaran   Pendaftaran @relation(fields: [pendaftaranId], references: [id], onDelete: Cascade)
+
+  status    StatusPendaftaran
+  catatan   String?
+  aktorRole Role
+  aktorId   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([pendaftaranId])
+}
+
+// ============================================
+// SAW (Simple Additive Weighting)
+// ============================================
+
+model SAWWeight {
+  id   String @id @default(cuid())
+  nama String
+
+  jurusanId String?
+  jurusan   Jurusan? @relation(fields: [jurusanId], references: [id])
+
+  isActive Boolean @default(false)
+
+  // Bobot (total harus = 1.0)
+  bobotBidang    Float @default(0.25)
+  bobotJarak     Float @default(0.15)
+  bobotKuota     Float @default(0.10)
+  bobotKeahlian  Float @default(0.20)
+  bobotDokumen   Float @default(0.10)
+  bobotFasilitas Float @default(0.10)
+  bobotRating    Float @default(0.10)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jurusanId, isActive])
+}
+
+// ============================================
+// LOGBOOK PKL
+// ============================================
+
+model Logbook {
+  id      String @id @default(cuid())
+  siswaId String
+  siswa   Siswa  @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+
+  tanggal      DateTime
+  kegiatan     String   @db.Text
+  kendala      String?  @db.Text
+  lampiranUrls String[]
+
+  status LogbookStatus @default(DRAFT)
+
+  reviewedAt    DateTime?
+  catatanReview String?
+  reviewerRole  Role?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([siswaId, tanggal])
+}
+
+// ============================================
+// PENILAIAN AKHIR PKL
+// ============================================
+
+model Penilaian {
+  id      String @id @default(cuid())
+  siswaId String
+  siswa   Siswa  @relation("PenilaianSiswa", fields: [siswaId], references: [id], onDelete: Cascade)
+
+  dudiId String?
+  dudi   DUDI?   @relation("PenilaianDUDI", fields: [dudiId], references: [id])
+  guruId String?
+  guru   Guru?   @relation("PenilaianGuru", fields: [guruId], references: [id])
+
+  nilaiKedisiplinan  Int
+  nilaiKeterampilan  Int
+  nilaiKerjasama     Int
+  nilaiInisiatif     Int
+  nilaiTanggungJawab Int
+  nilaiRataRata      Float
+
+  catatan String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================
+// REVIEW DU/DI (dari siswa setelah selesai PKL)
+// ============================================
+
+model ReviewDUDI {
+  id      String @id @default(cuid())
+  siswaId String
+  siswa   Siswa  @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  dudiId  String
+  dudi    DUDI   @relation(fields: [dudiId], references: [id], onDelete: Cascade)
+
+  rating   Int
+  komentar String? @db.Text
+  anonim   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([siswaId, dudiId])
+}
+
+// ============================================
+// NOTIFIKASI
+// ============================================
+
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  judul   String
+  pesan   String           @db.Text
+  linkUrl String?
+  isRead  Boolean          @default(false)
+  readAt  DateTime?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+// ============================================
+// PENGUMUMAN
+// ============================================
+
+model Announcement {
+  id          String @id @default(cuid())
+  judul       String
+  konten      String @db.Text
+  targetRoles Role[]
+
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  isPinned    Boolean   @default(false)
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([publishedAt])
+}
+
+// ============================================
+// MESSAGING (sederhana, antara siswa-DUDI)
+// ============================================
+
+model Message {
+  id         String @id @default(cuid())
+  senderId   String
+  sender     User   @relation("MessageSender", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User   @relation("MessageReceiver", fields: [receiverId], references: [id])
+
+  konten String    @db.Text
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([senderId, receiverId])
+}
+
+// ============================================
+// AUDIT LOG
+// ============================================
+
+model AuditLog {
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ============================================
+// KONFIGURASI SISTEM
+// ============================================
+
+model SystemConfig {
+  key       String  @id
+  value     String  @db.Text
+  deskripsi String?
+
+  updatedAt DateTime @updatedAt
+}

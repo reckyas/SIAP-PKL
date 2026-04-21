@@ -1,0 +1,45 @@
+# Stack Docker untuk development SIAP PKL.
+# Jalankan: docker compose up -d
+# Hentikan: docker compose down
+# Reset data: docker compose down -v  (HATI-HATI: hapus volume = hapus data)
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: siap-pkl-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: siap_pkl
+      POSTGRES_PASSWORD: siap_pkl_dev
+      POSTGRES_DB: siap_pkl
+    ports:
+      - "5432:5432"
+    volumes:
+      - siap_pkl_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U siap_pkl -d siap_pkl"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # pgAdmin (optional GUI) — akses di http://localhost:5050
+  # Login: admin@siap-pkl.local / admin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: siap-pkl-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@siap-pkl.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - siap_pkl_pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  siap_pkl_db_data:
+  siap_pkl_pgadmin_data:

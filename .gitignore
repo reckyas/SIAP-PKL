@@ -1,0 +1,47 @@
+# dependencies
+node_modules
+.pnp
+.pnp.*
+
+# testing
+coverage
+
+# next.js
+.next/
+out/
+build
+dist
+
+# misc
+.DS_Store
+*.pem
+Thumbs.db
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files
+.env
+.env*.local
+.env.development
+.env.production
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# prisma
+prisma/migrations/**/migration_lock.toml
+!prisma/migrations/migration_lock.toml
+
+# docker volumes lokal (kalau di-bind ke ./data)
+data/
+postgres-data/
+
+# editor
+.vscode/
+.idea/
+*.swp
